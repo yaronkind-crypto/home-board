@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280,height=720">
+<title>Home Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* Built for Chromecast gen-1: 1280x720 viewport, flexbox only, no animations */
+:root{--bg:#0e1116;--card:#171b22;--line:#252b35;--text:#e8ebf0;--muted:#8a93a3;--accent:#f2b35b;--ok:#5fc48c;--blue:#6fa8ff}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1280px;height:720px;overflow:hidden;background:var(--bg);color:var(--text);font-family:Heebo,Arial,sans-serif}
+.wrap{display:flex;flex-direction:column;height:720px;padding:28px 36px;}
+.top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px}
+.clock{font-size:84px;font-weight:800;line-height:1;letter-spacing:1px}
+.date{font-size:26px;color:var(--muted);margin-top:6px}
+.wx{display:flex;align-items:center}
+.wx-now{text-align:left;margin-left:28px}
+.wx-temp{font-size:72px;font-weight:800;line-height:1}
+.wx-desc{font-size:24px;color:var(--muted)}
+.wx-days{display:flex}
+.day{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 16px;margin-left:10px;text-align:center;min-width:104px}
+.day b{display:block;font-size:20px;color:var(--muted);font-weight:600}
+.day .ic{font-size:30px;display:block}
+.day span{font-size:20px}
+.day small{display:block;font-size:16px;color:var(--blue)}
+.grid{display:flex;flex:1;min-height:0}
+.col{flex:1;display:flex;flex-direction:column;min-width:0;margin-left:18px}
+.col:last-child{margin-left:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 22px;flex:1;overflow:hidden;margin-bottom:18px}
+.card:last-child{margin-bottom:0}
+h2{font-size:24px;color:var(--accent);font-weight:800;margin-bottom:10px}
+li{list-style:none;font-size:23px;line-height:1.35;padding:5px 0;border-bottom:1px solid var(--line)}
+li:last-child{border-bottom:0}
+.todo li:before{content:"☐  ";color:var(--muted)}
+.todo li.done{color:var(--muted);text-decoration:line-through}
+.todo li.done:before{content:"☑  ";color:var(--ok)}
+.note li{padding-right:0}
+.ex li{font-size:21px}
+.ex em{font-style:normal;color:var(--muted);font-size:18px;display:block}
+.tag{font-size:16px;color:var(--bg);background:var(--accent);border-radius:8px;padding:1px 8px;margin-right:8px;font-weight:600;vertical-align:middle}
+.foot{position:absolute;bottom:8px;left:36px;font-size:13px;color:#4d5563}
+.empty{color:var(--muted);font-size:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="date"></div>
+    </div>
+    <div class="wx">
+      <div class="wx-days" id="wxDays"></div>
+      <div class="wx-now">
+        <div class="wx-temp" id="wxTemp">--°</div>
+        <div class="wx-desc" id="wxDesc">טוען מזג אוויר…</div>
+      </div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="col">
+      <div class="card note"><h2>הודעות</h2><ul id="notes"></ul></div>
+      <div class="card todo"><h2>משימות</h2><ul id="todos"></ul></div>
+    </div>
+    <div class="col">
+      <div class="card ex"><h2>טאי צ׳י בכיסא <span class="tag" id="tcTag"></span></h2><ul id="taichi"></ul></div>
+      <div class="card ex"><h2>קליסטניקס <span class="tag" id="calTag"></span></h2><ul id="cali"></ul></div>
+    </div>
+  </div>
+</div>
+<div class="foot" id="foot"></div>
+
+<script>
+/* ===================== SETTINGS ===================== */
+// Paste the "Publish to web" CSV link of your Google Sheet here.
+// Leave empty to show demo data.
+var SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1QWsPchrTxrwZM_5H0VrpULP6s_x_GvL7BJIJf7KVTmA/gviz/tq?tqx=out:csv";
+var LAT = 32.0853, LON = 34.7818;          // Tel Aviv
+var SHEET_REFRESH_MIN = 2;
+var WEATHER_REFRESH_MIN = 15;
+var FULL_RELOAD_HOURS = 6;                  // clears memory on the old Chromecast
+
+/* ===================== WEEKLY PLAN ===================== */
+// Index = day of week (0 = Sunday)
+var TAICHI = [
+  {t:"פתיחה ונשימה", items:[["הרמת ידיים (Commencement)","8 חזרות, נשימה איטית"],["גלי ידיים כעננים","8 לכל צד"],["דחיפת השמיים","6 חזרות"],["סגירה","1 דקה נשימה שקטה"]]},
+  {t:"זרימה", items:[["הרמת ידיים","6 חזרות"],["הפרדת רעמת הסוס","6 לכל צד"],["הברשת הברך","6 לכל צד"],["סגירה","1 דקה"]]},
+  {t:"איזון", items:[["סיבובי מותניים בישיבה","10 לכל צד"],["גלי ידיים כעננים","8 לכל צד"],["דחיית הקוף","6 לכל צד"],["סגירה","1 דקה"]]},
+  {t:"פתיחה ונשימה", items:[["הרמת ידיים","8 חזרות"],["דחיפת השמיים","6 חזרות"],["חיבוק הנמר","6 חזרות"],["סגירה","1 דקה"]]},
+  {t:"זרימה", items:[["גלי ידיים כעננים","8 לכל צד"],["הפרדת רעמת הסוס","6 לכל צד"],["הברשת הברך","6 לכל צד"],["סגירה","1 דקה"]]},
+  {t:"רגוע", items:[["נשימה בטנית","2 דקות"],["סיבובי כתפיים","10 לכל כיוון"],["גלי ידיים כעננים","6 לכל צד"],["סגירה","1 דקה"]]},
+  {t:"רצף מלא", items:[["הרמת ידיים","6"],["עננים → רעמת הסוס → הברשת ברך","3 סבבים איטיים"],["דחיית הקוף","6 לכל צד"],["סגירה","2 דקות"]]}
+];
+var CALI = [
+  {t:"כוח A", items:[["שכיבות סמיכה (על הברכיים/שיפוע לפי צורך)","3×10"],["סקוואט קימה מכיסא","3×12"],["גשר ישבן","3×12"],["פלאנק","3×30 שנ׳"]]},
+  {t:"התאוששות", items:[["הליכה קלה","20 דק׳"],["מתיחות ירכיים וחזה","5 דק׳"]]},
+  {t:"כוח B", items:[["לאנג׳ים לאחור","3×8 לכל רגל"],["דיפס על כיסא יציב","3×8"],["Bird-dog","3×8 לכל צד"],["Dead bug","3×10"]]},
+  {t:"התאוששות", items:[["הליכה קלה","20 דק׳"],["מוביליטי כתפיים וקרסוליים","5 דק׳"]]},
+  {t:"כוח A", items:[["שכיבות סמיכה","3×10"],["סקוואט קימה מכיסא","3×12"],["גשר ישבן","3×12"],["פלאנק צד","2×20 שנ׳ לכל צד"]]},
+  {t:"מנוחה", items:[["מנוחה פעילה","הליכה / משחק עם הכלב"]]},
+  {t:"כוח B", items:[["לאנג׳ים לאחור","3×8 לכל רגל"],["חתירה הפוכה מתחת לשולחן יציב","3×8"],["הרמות עקבים","3×15"],["פלאנק","3×30 שנ׳"]]}
+];
+
+/* ===================== HELPERS (ES5 for old Chromecast) ===================== */
+function $(id){return document.getElementById(id);}
+function pad(n){return n<10?"0"+n:""+n;}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function get(url, ok, fail){
+  var x=new XMLHttpRequest();
+  x.open("GET", url, true);
+  x.timeout=15000;
+  x.onload=function(){ if(x.status>=200&&x.status<300){ok(x.responseText);} else if(fail){fail();} };
+  x.onerror=x.ontimeout=function(){ if(fail){fail();} };
+  x.send();
+}
+var DAYS=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+var MONTHS=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+
+/* ===================== CLOCK ===================== */
+var lastDay=-1;
+function tick(){
+  var d=new Date();
+  $("clock").innerHTML=pad(d.getHours())+":"+pad(d.getMinutes());
+  $("date").innerHTML="יום "+DAYS[d.getDay()]+", "+d.getDate()+" ב"+MONTHS[d.getMonth()];
+  if(d.getDay()!==lastDay){lastDay=d.getDay();renderExercises(lastDay);}
+}
+
+/* ===================== EXERCISES ===================== */
+function renderList(el, plan){
+  var h="";
+  for(var i=0;i<plan.items.length;i++){h+="<li>"+esc(plan.items[i][0])+"<em>"+esc(plan.items[i][1])+"</em></li>";}
+  $(el).innerHTML=h;
+}
+function renderExercises(dow){
+  renderList("taichi",TAICHI[dow]); $("tcTag").innerHTML=esc(TAICHI[dow].t);
+  renderList("cali",CALI[dow]);     $("calTag").innerHTML=esc(CALI[dow].t);
+}
+
+/* ===================== WEATHER (Open-Meteo, no key) ===================== */
+var WX={0:["☀️","בהיר"],1:["🌤️","בהיר ברובו"],2:["⛅","מעונן חלקית"],3:["☁️","מעונן"],45:["🌫️","ערפל"],48:["🌫️","ערפל"],
+51:["🌦️","טפטוף"],53:["🌦️","טפטוף"],55:["🌦️","טפטוף"],61:["🌧️","גשם קל"],63:["🌧️","גשם"],65:["🌧️","גשם חזק"],
+80:["🌦️","ממטרים"],81:["🌧️","ממטרים"],82:["⛈️","ממטרים חזקים"],95:["⛈️","סופת רעמים"],96:["⛈️","סופת רעמים"],99:["⛈️","סופת רעמים"]};
+function wx(c){return WX[c]||["🌡️",""];}
+function loadWeather(){
+  var url="https://api.open-meteo.com/v1/forecast?latitude="+LAT+"&longitude="+LON+
+    "&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m"+
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"+
+    "&timezone=Asia%2FJerusalem&forecast_days=4";
+  get(url,function(txt){
+    try{
+      var j=JSON.parse(txt), c=j.current, d=j.daily;
+      $("wxTemp").innerHTML=Math.round(c.temperature_2m)+"°";
+      $("wxDesc").innerHTML=wx(c.weather_code)[0]+" "+wx(c.weather_code)[1]+" · לחות "+c.relative_humidity_2m+"%";
+      var h="";
+      for(var i=1;i<d.time.length;i++){
+        var dt=new Date(d.time[i]+"T12:00:00");
+        h+="<div class='day'><b>"+DAYS[dt.getDay()]+"</b><span class='ic'>"+wx(d.weather_code[i])[0]+"</span><span>"+
+           Math.round(d.temperature_2m_max[i])+"° / "+Math.round(d.temperature_2m_min[i])+"°</span>"+
+           (d.precipitation_probability_max[i]>0?"<small>☔ "+d.precipitation_probability_max[i]+"%</small>":"")+"</div>";
+      }
+      $("wxDays").innerHTML=h;
+    }catch(e){$("wxDesc").innerHTML="שגיאה בנתוני מזג אוויר";}
+  },function(){$("wxDesc").innerHTML="אין חיבור למזג אוויר";});
+}
+
+/* ===================== NOTES + TODO (Google Sheet CSV) ===================== */
+// Sheet columns: A=סוג (הודעה / משימה)  B=טקסט  C=בוצע (כן / v / x / TRUE)
+function parseCSV(s){
+  var rows=[],row=[],f="",q=false;
+  for(var i=0;i<s.length;i++){
+    var ch=s.charAt(i);
+    if(q){ if(ch=='"'){ if(s.charAt(i+1)=='"'){f+='"';i++;} else q=false; } else f+=ch; }
+    else if(ch=='"') q=true;
+    else if(ch==','){row.push(f);f="";}
+    else if(ch=='\n'){row.push(f);rows.push(row);row=[];f="";}
+    else if(ch!='\r') f+=ch;
+  }
+  if(f!==""||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+function isDone(v){v=(v||"").replace(/\s/g,"").toLowerCase();return v==="כן"||v==="v"||v==="x"||v==="true"||v==="✓"||v==="1";}
+function renderSheet(rows){
+  var n="",t="",open=[],done=[];
+  for(var i=1;i<rows.length;i++){
+    var type=(rows[i][0]||"").replace(/\s/g,""), text=rows[i][1]||"";
+    if(!text) continue;
+    if(type==="הודעה"||type.toLowerCase()==="note") n+="<li>"+esc(text)+"</li>";
+    else if(type==="משימה"||type.toLowerCase()==="todo"){
+      (isDone(rows[i][2])?done:open).push("<li"+(isDone(rows[i][2])?" class='done'":"")+">"+esc(text)+"</li>");
+    }
+  }
+  t=open.join("")+done.join("");
+  $("notes").innerHTML=n||"<li class='empty'>אין הודעות</li>";
+  $("todos").innerHTML=t||"<li class='empty'>הכל בוצע 🎉</li>";
+  var d=new Date(); $("foot").innerHTML="עודכן "+pad(d.getHours())+":"+pad(d.getMinutes());
+}
+var DEMO='סוג,טקסט,בוצע\nהודעה,"ברוך הבא ללוח הבית! ערוך את הגיליון בגוגל שיטס",\nהודעה,זו הודעה לדוגמה,\nמשימה,לקנות חלב,\nמשימה,לשלם חשמל,כן\nמשימה,להתקשר לסבתא,';
+function loadSheet(){
+  if(!SHEET_CSV_URL){renderSheet(parseCSV(DEMO));return;}
+  var u=SHEET_CSV_URL+(SHEET_CSV_URL.indexOf("?")>-1?"&":"?")+"_="+Date.now();
+  get(u,function(txt){renderSheet(parseCSV(txt));},function(){$("foot").innerHTML="⚠️ אין חיבור לגיליון";});
+}
+
+/* ===================== START ===================== */
+tick(); setInterval(tick, 10000);
+loadWeather(); setInterval(loadWeather, WEATHER_REFRESH_MIN*60000);
+loadSheet();   setInterval(loadSheet, SHEET_REFRESH_MIN*60000);
+setTimeout(function(){location.reload();}, FULL_RELOAD_HOURS*3600000);
+</script>
+</body>
+</html>
