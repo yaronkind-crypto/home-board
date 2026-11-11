@@ -21,7 +21,7 @@ html,body{width:1280px;height:720px;overflow:hidden;background:var(--bg);color:v
 .wx-days{display:flex}
 .day{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 16px;margin-left:10px;text-align:center;min-width:104px}
 .day b{display:block;font-size:20px;color:var(--muted);font-weight:600}
-.day .ic{font-size:30px;display:block}
+.day .ic{font-size:17px;display:block;color:var(--text);margin:2px 0}
 .day span{font-size:20px}
 .day small{display:block;font-size:16px;color:var(--blue)}
 .grid{display:flex;flex:1;min-height:0}
@@ -32,12 +32,13 @@ html,body{width:1280px;height:720px;overflow:hidden;background:var(--bg);color:v
 h2{font-size:24px;color:var(--accent);font-weight:800;margin-bottom:10px}
 li{list-style:none;font-size:23px;line-height:1.35;padding:5px 0;border-bottom:1px solid var(--line)}
 li:last-child{border-bottom:0}
-.todo li:before{content:"☐  ";color:var(--muted)}
+.todo li:before{content:"○  ";color:var(--muted)}
 .todo li.done{color:var(--muted);text-decoration:line-through}
-.todo li.done:before{content:"☑  ";color:var(--ok)}
+.todo li.done:before{content:"✓  ";color:var(--ok)}
 .note li{padding-right:0}
 .ex li{font-size:21px}
-.ex em{font-style:normal;color:var(--muted);font-size:18px;display:block}
+.ex em{font-style:normal;color:var(--muted);font-size:18px}
+.ex em:before{content:" · "}
 .tag{font-size:16px;color:var(--bg);background:var(--accent);border-radius:8px;padding:1px 8px;margin-right:8px;font-weight:600;vertical-align:middle}
 .foot{position:absolute;bottom:8px;left:36px;font-size:13px;color:#4d5563}
 .empty{color:var(--muted);font-size:20px}
@@ -151,13 +152,13 @@ function loadWeather(){
     try{
       var j=JSON.parse(txt), c=j.current, d=j.daily;
       $("wxTemp").innerHTML=Math.round(c.temperature_2m)+"°";
-      $("wxDesc").innerHTML=wx(c.weather_code)[0]+" "+wx(c.weather_code)[1]+" · לחות "+c.relative_humidity_2m+"%";
+      $("wxDesc").innerHTML=wx(c.weather_code)[1]+" · לחות "+c.relative_humidity_2m+"%";
       var h="";
       for(var i=1;i<d.time.length;i++){
         var dt=new Date(d.time[i]+"T12:00:00");
-        h+="<div class='day'><b>"+DAYS[dt.getDay()]+"</b><span class='ic'>"+wx(d.weather_code[i])[0]+"</span><span>"+
+        h+="<div class='day'><b>"+DAYS[dt.getDay()]+"</b><span class='ic'>"+wx(d.weather_code[i])[1]+"</span><span>"+
            Math.round(d.temperature_2m_max[i])+"° / "+Math.round(d.temperature_2m_min[i])+"°</span>"+
-           (d.precipitation_probability_max[i]>0?"<small>☔ "+d.precipitation_probability_max[i]+"%</small>":"")+"</div>";
+           (d.precipitation_probability_max[i]>0?"<small>גשם "+d.precipitation_probability_max[i]+"%</small>":"")+"</div>";
       }
       $("wxDays").innerHTML=h;
     }catch(e){$("wxDesc").innerHTML="שגיאה בנתוני מזג אוויר";}
@@ -192,14 +193,14 @@ function renderSheet(rows){
   }
   t=open.join("")+done.join("");
   $("notes").innerHTML=n||"<li class='empty'>אין הודעות</li>";
-  $("todos").innerHTML=t||"<li class='empty'>הכל בוצע 🎉</li>";
+  $("todos").innerHTML=t||"<li class='empty'>הכל בוצע</li>";
   var d=new Date(); $("foot").innerHTML="עודכן "+pad(d.getHours())+":"+pad(d.getMinutes());
 }
 var DEMO='סוג,טקסט,בוצע\nהודעה,"ברוך הבא ללוח הבית! ערוך את הגיליון בגוגל שיטס",\nהודעה,זו הודעה לדוגמה,\nמשימה,לקנות חלב,\nמשימה,לשלם חשמל,כן\nמשימה,להתקשר לסבתא,';
 function loadSheet(){
   if(!SHEET_CSV_URL){renderSheet(parseCSV(DEMO));return;}
   var u=SHEET_CSV_URL+(SHEET_CSV_URL.indexOf("?")>-1?"&":"?")+"_="+Date.now();
-  get(u,function(txt){renderSheet(parseCSV(txt));},function(){$("foot").innerHTML="⚠️ אין חיבור לגיליון";});
+  get(u,function(txt){renderSheet(parseCSV(txt));},function(){$("foot").innerHTML="אין חיבור לגיליון";});
 }
 
 /* ===================== START ===================== */
